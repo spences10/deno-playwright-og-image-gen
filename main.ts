@@ -1,5 +1,9 @@
 import { serve } from "https://deno.land/std/http/server.ts";
 import { chromium } from "playwright";
+import { crypto } from "https://deno.land/std/crypto/mod.ts";
+
+// In-memory cache for generated images
+const imageCache = new Map<string, Uint8Array>();
 
 // Simple template renderer
 function render_template(template_content: string, data: Record<string, string>): string {
@@ -17,6 +21,20 @@ async function load_template(template_name: string): Promise<string> {
   return await Deno.readTextFile(template_path);
 }
 
+// Generate cache key from template data
+function generate_cache_key(template_data: Record<string, string>): string {
+  const sorted_data = Object.keys(template_data)
+    .sort()
+    .reduce((result, key) => {
+      result[key] = template_data[key];
+      return result;
+    }, {} as Record<string, string>);
+  
+  const data_string = JSON.stringify(sorted_data);
+  return crypto.subtle.digestSync("SHA-256", new TextEncoder().encode(data_string))
+    .reduce((hex, byte) => hex + byte.toString(16).padStart(2, '0'), '');
+}
+
 const PORT = parseInt(Deno.env.get("PORT") || "8000");
 
 const server = serve(async (req) => {
@@ -26,14 +44,34 @@ const server = serve(async (req) => {
     try {
       console.log("Generating image...");
       
-      // Default template data
+      // Extract query parameters
+      const params = new URLSearchParams(url.search);
+      
+      // Default template data with query parameter overrides
       const template_data = {
-        title: "Hello World",
-        description: "OG Image Generator is Working!",
-        backgroundColor: "#667eea",
-        backgroundColorSecondary: "#764ba2",
-        textColor: "white"
+        title: params.get("title") || "Hello World",
+        description: params.get("description") || "OG Image Generator is Working!",
+        author: params.get("author") || "",
+        website: params.get("website") || "",
+        backgroundColor: params.get("backgroundColor") || "#667eea",
+        backgroundColorSecondary: params.get("backgroundColorSecondary") || "#764ba2",
+        textColor: params.get("textColor") || "white"
       };
+      
+      // Generate cache key
+      const cache_key = generate_cache_key(template_data);
+      
+      // Check if image is already cached
+      if (imageCache.has(cache_key)) {
+        console.log("Returning cached image");
+        const cached_image = imageCache.get(cache_key)!;
+        return new Response(cached_image, {
+          headers: { 
+            "Content-Type": "image/png",
+            "Cache-Control": "public, max-age=2592000"
+          }
+        });
+      }
       
       // Load and render template
       const template_content = await load_template("basic");
@@ -57,12 +95,15 @@ const server = serve(async (req) => {
       
       await browser.close();
       
+      // Cache the generated image
+      imageCache.set(cache_key, screenshot);
+      
       console.log("Image generated successfully");
       
       return new Response(screenshot, {
         headers: { 
           "Content-Type": "image/png",
-          "Cache-Control": "public, max-age=3600"
+          "Cache-Control": "public, max-age=2592000"
         }
       });
       
