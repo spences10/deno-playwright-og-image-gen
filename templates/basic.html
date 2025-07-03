@@ -4,47 +4,189 @@
     <style>
       body {
         margin: 0;
-        padding: 40px;
+        padding: 0;
+        width: 1200px;
+        height: 630px;
         background: linear-gradient(135deg, {{backgroundColor}} 0%, {{backgroundColorSecondary}} 100%);
         color: {{textColor}};
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        position: relative;
+        overflow: hidden;
         display: flex;
-        flex-direction: column;
-        justify-content: center;
         align-items: center;
-        height: 550px;
-        text-align: center;
+        justify-content: center;
       }
-      h1 {
-        font-size: 72px;
-        margin: 0;
-        font-weight: 700;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+      
+      /* Decorative background elements */
+      .bg-pattern {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0.1;
+        background-image: 
+          radial-gradient(circle at 25% 25%, {{textColor}} 2px, transparent 2px),
+          radial-gradient(circle at 75% 75%, {{textColor}} 1px, transparent 1px);
+        background-size: 60px 60px, 40px 40px;
+        background-position: 0 0, 30px 30px;
       }
-      p {
-        font-size: 32px;
-        margin-top: 20px;
+      
+      .container {
+        position: relative;
+        z-index: 2;
+        max-width: 900px;
+        padding: 60px;
+        text-align: left;
+      }
+      
+      .badge {
+        display: inline-block;
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 24px;
+        color: {{textColor}};
         opacity: 0.9;
-        font-weight: 400;
       }
+      
+      h1 {
+        font-size: 56px;
+        margin: 0 0 24px 0;
+        font-weight: 800;
+        line-height: 1.1;
+        background: linear-gradient(135deg, {{textColor}} 0%, rgba(255,255,255,0.8) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-shadow: none;
+      }
+      
+      .description {
+        font-size: 24px;
+        margin: 0 0 40px 0;
+        opacity: 0.85;
+        font-weight: 400;
+        line-height: 1.4;
+        max-width: 700px;
+      }
+      
+      .meta {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-top: 32px;
+      }
+      
       .author {
-        font-size: 28px;
-        margin-top: 30px;
+        font-size: 18px;
+        font-weight: 600;
+        opacity: 0.9;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 8px 16px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+      }
+      
+      .separator {
+        font-size: 16px;
+        opacity: 0.5;
+      }
+      
+      .website {
+        font-size: 18px;
         opacity: 0.8;
         font-weight: 500;
+        font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
       }
-      .website {
-        font-size: 24px;
-        margin-top: 10px;
-        opacity: 0.7;
-        font-weight: 400;
+      
+      /* Accent elements */
+      .accent-line {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 6px;
+        height: 100%;
+        background: linear-gradient(180deg, {{textColor}} 0%, transparent 100%);
+        opacity: 0.6;
+      }
+      
+      .corner-accent {
+        position: absolute;
+        bottom: 40px;
+        right: 40px;
+        width: 80px;
+        height: 80px;
+        border: 2px solid {{textColor}};
+        border-left: none;
+        border-top: none;
+        opacity: 0.3;
+        border-radius: 0 0 12px 0;
+      }
+      
+      .floating-shapes {
+        position: absolute;
+        top: 20%;
+        right: 10%;
+        width: 120px;
+        height: 120px;
+        opacity: 0.1;
+      }
+      
+      .shape {
+        position: absolute;
+        background: {{textColor}};
+        border-radius: 50%;
+      }
+      
+      .shape:nth-child(1) {
+        width: 60px;
+        height: 60px;
+        top: 0;
+        left: 0;
+      }
+      
+      .shape:nth-child(2) {
+        width: 40px;
+        height: 40px;
+        top: 30px;
+        right: 0;
+      }
+      
+      .shape:nth-child(3) {
+        width: 20px;
+        height: 20px;
+        bottom: 0;
+        left: 20px;
       }
     </style>
   </head>
   <body>
-    <h1>{{title}}</h1>
-    <p>{{description}}</p>
-    <div class="author">{{author}}</div>
-    <div class="website">{{website}}</div>
+    <div class="bg-pattern"></div>
+    <div class="accent-line"></div>
+    <div class="corner-accent"></div>
+    
+    <div class="floating-shapes">
+      <div class="shape"></div>
+      <div class="shape"></div>
+      <div class="shape"></div>
+    </div>
+    
+    <div class="container">
+      <div class="badge">Blog Post</div>
+      <h1>{{title}}</h1>
+      <div class="description">{{description}}</div>
+      <div class="meta">
+        <div class="author">{{author}}</div>
+        <div class="separator">•</div>
+        <div class="website">{{website}}</div>
+      </div>
+    </div>
   </body>
 </html>
