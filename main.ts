@@ -79,7 +79,7 @@ const server = serve(async (req) => {
       
       // Launch browser
       const browser = await chromium.launch({
-        executablePath: '/usr/bin/chromium'
+        executablePath: '/usr/bin/chromium-browser'
       });
       const page = await browser.newPage();
       

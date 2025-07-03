@@ -1,5 +1,5 @@
 [phases.setup]
-aptPkgs = ["chromium"]
+aptPkgs = ["chromium-browser"]
 
 [phases.install]
 cmds = ["deno cache --reload main.ts"]
