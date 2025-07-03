@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "start": "deno run --allow-net --allow-run --allow-read --allow-write --allow-env --allow-sys main.ts",
+    "start": "deno run -A --unstable npm:playwright install chromium && deno run --allow-net --allow-run --allow-read --allow-write --allow-env --allow-sys main.ts",
     "dev": "deno run --allow-net --allow-run --allow-read --allow-write --allow-env --allow-sys --watch main.ts",
     "install-playwright": "deno run -A --unstable npm:playwright install chromium"
   },
