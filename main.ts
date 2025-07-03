@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std/http/server.ts";
-import { createCanvas } from "canvas";
+import { Canvas } from "@gfx/canvas";
 import { crypto } from "https://deno.land/std/crypto/mod.ts";
 
 // In-memory cache for generated images
@@ -31,8 +31,10 @@ function generate_cache_key(template_data: Record<string, string>): string {
     }, {} as Record<string, string>);
   
   const data_string = JSON.stringify(sorted_data);
-  return crypto.subtle.digestSync("SHA-256", new TextEncoder().encode(data_string))
-    .reduce((hex, byte) => hex + byte.toString(16).padStart(2, '0'), '');
+  const hash = crypto.subtle.digestSync("SHA-256", new TextEncoder().encode(data_string));
+  return Array.from(new Uint8Array(hash))
+    .map(byte => byte.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 const PORT = parseInt(Deno.env.get("PORT") || "8000");
@@ -74,7 +76,7 @@ const server = serve(async (req) => {
       }
       
       // Create canvas
-      const canvas = createCanvas(1200, 630);
+      const canvas = new Canvas(1200, 630);
       const ctx = canvas.getContext('2d');
       
       // Draw gradient background
@@ -111,7 +113,7 @@ const server = serve(async (req) => {
       }
       
       // Generate PNG
-      const screenshot = canvas.toBuffer();
+      const screenshot = canvas.encode('png');
       
       // Cache the generated image
       imageCache.set(cache_key, screenshot);

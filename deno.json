@@ -4,6 +4,6 @@
     "dev": "deno run --allow-net --allow-run --allow-read --allow-write --allow-env --allow-sys --watch main.ts"
   },
   "imports": {
-    "canvas": "https://deno.land/x/canvas@v1.4.1/mod.ts"
+    "@gfx/canvas": "jsr:@gfx/canvas@^0.5.4"
   }
 }
