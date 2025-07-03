@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std/http/server.ts";
-import { chromium } from "playwright";
+import { Canvas } from "canvas";
 import { crypto } from "https://deno.land/std/crypto/mod.ts";
 
 // In-memory cache for generated images
@@ -73,29 +73,45 @@ const server = serve(async (req) => {
         });
       }
       
-      // Load and render template
-      const template_content = await load_template("basic");
-      const rendered_html = render_template(template_content, template_data);
+      // Create canvas
+      const canvas = new Canvas(1200, 630);
+      const ctx = canvas.getContext('2d');
       
-      // Launch browser
-      const browser = await chromium.launch({
-        executablePath: '/usr/bin/chromium-browser'
-      });
-      const page = await browser.newPage();
+      // Draw gradient background
+      const gradient = ctx.createLinearGradient(0, 0, 1200, 630);
+      gradient.addColorStop(0, template_data.backgroundColor);
+      gradient.addColorStop(1, template_data.backgroundColorSecondary);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 1200, 630);
       
-      // Set viewport to OG image size
-      await page.setViewportSize({ width: 1200, height: 630 });
+      // Draw title
+      ctx.fillStyle = template_data.textColor;
+      ctx.font = 'bold 72px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(template_data.title, 600, 250);
       
-      // Load rendered HTML
-      await page.setContent(rendered_html);
+      // Draw description
+      ctx.font = '32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.globalAlpha = 0.9;
+      ctx.fillText(template_data.description, 600, 320);
       
-      // Take screenshot
-      const screenshot = await page.screenshot({ 
-        type: 'png',
-        fullPage: false
-      });
+      // Draw author
+      if (template_data.author) {
+        ctx.font = '500 28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.globalAlpha = 0.8;
+        ctx.fillText(template_data.author, 600, 400);
+      }
       
-      await browser.close();
+      // Draw website
+      if (template_data.website) {
+        ctx.font = '24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.globalAlpha = 0.7;
+        ctx.fillText(template_data.website, 600, 440);
+      }
+      
+      // Generate PNG
+      const screenshot = canvas.toBuffer('image/png');
       
       // Cache the generated image
       imageCache.set(cache_key, screenshot);
