@@ -1,9 +1,8 @@
 import { serve } from "https://deno.land/std/http/server.ts";
-import { Canvas } from "@gfx/canvas";
 import { crypto } from "https://deno.land/std/crypto/mod.ts";
 
 // In-memory cache for generated images
-const imageCache = new Map<string, Uint8Array>();
+const imageCache = new Map<string, string>();
 
 // Simple template renderer
 function render_template(template_content: string, data: Record<string, string>): string {
@@ -63,66 +62,55 @@ const server = serve(async (req) => {
       // Generate cache key
       const cache_key = generate_cache_key(template_data);
       
-      // Check if image is already cached
+      // Check if SVG is already cached
       if (imageCache.has(cache_key)) {
-        console.log("Returning cached image");
-        const cached_image = imageCache.get(cache_key)!;
-        return new Response(cached_image, {
+        console.log("Returning cached SVG");
+        const cached_svg = imageCache.get(cache_key)!;
+        return new Response(cached_svg, {
           headers: { 
-            "Content-Type": "image/png",
+            "Content-Type": "image/svg+xml",
             "Cache-Control": "public, max-age=2592000"
           }
         });
       }
       
-      // Create canvas
-      const canvas = new Canvas(1200, 630);
-      const ctx = canvas.getContext('2d');
+      // Generate SVG
+      const svg = `
+<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:${template_data.backgroundColor};stop-opacity:1" />
+      <stop offset="100%" style="stop-color:${template_data.backgroundColorSecondary};stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="1200" height="630" fill="url(#bg)" />
+  
+  <text x="600" y="250" text-anchor="middle" fill="${template_data.textColor}" 
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
+        font-size="72" font-weight="bold">${template_data.title}</text>
+  
+  <text x="600" y="320" text-anchor="middle" fill="${template_data.textColor}" 
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
+        font-size="32" opacity="0.9">${template_data.description}</text>
+  
+  ${template_data.author ? `<text x="600" y="400" text-anchor="middle" fill="${template_data.textColor}" 
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
+        font-size="28" font-weight="500" opacity="0.8">${template_data.author}</text>` : ''}
+  
+  ${template_data.website ? `<text x="600" y="440" text-anchor="middle" fill="${template_data.textColor}" 
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
+        font-size="24" opacity="0.7">${template_data.website}</text>` : ''}
+</svg>`.trim();
       
-      // Draw gradient background
-      const gradient = ctx.createLinearGradient(0, 0, 1200, 630);
-      gradient.addColorStop(0, template_data.backgroundColor);
-      gradient.addColorStop(1, template_data.backgroundColorSecondary);
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, 1200, 630);
+      // Cache the generated SVG
+      imageCache.set(cache_key, svg);
       
-      // Draw title
-      ctx.fillStyle = template_data.textColor;
-      ctx.font = 'bold 72px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(template_data.title, 600, 250);
+      console.log("SVG generated successfully");
       
-      // Draw description
-      ctx.font = '32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-      ctx.globalAlpha = 0.9;
-      ctx.fillText(template_data.description, 600, 320);
-      
-      // Draw author
-      if (template_data.author) {
-        ctx.font = '500 28px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        ctx.globalAlpha = 0.8;
-        ctx.fillText(template_data.author, 600, 400);
-      }
-      
-      // Draw website
-      if (template_data.website) {
-        ctx.font = '24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        ctx.globalAlpha = 0.7;
-        ctx.fillText(template_data.website, 600, 440);
-      }
-      
-      // Generate PNG
-      const screenshot = canvas.encode('png');
-      
-      // Cache the generated image
-      imageCache.set(cache_key, screenshot);
-      
-      console.log("Image generated successfully");
-      
-      return new Response(screenshot, {
+      return new Response(svg, {
         headers: { 
-          "Content-Type": "image/png",
+          "Content-Type": "image/svg+xml",
           "Cache-Control": "public, max-age=2592000"
         }
       });

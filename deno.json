@@ -3,7 +3,5 @@
     "start": "deno run --allow-net --allow-run --allow-read --allow-write --allow-env --allow-sys main.ts",
     "dev": "deno run --allow-net --allow-run --allow-read --allow-write --allow-env --allow-sys --watch main.ts"
   },
-  "imports": {
-    "@gfx/canvas": "https://deno.land/x/skia_canvas@0.5.6/mod.ts"
-  }
+  "imports": {}
 }
