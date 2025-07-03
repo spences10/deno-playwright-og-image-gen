@@ -4,7 +4,6 @@
     "dev": "deno run --allow-net --allow-run --allow-read --allow-write --allow-env --allow-sys --watch main.ts"
   },
   "imports": {
-    "canvas": "https://deno.land/x/skia_canvas@0.5.6/mod.ts",
-    "deno-dom": "https://deno.land/x/deno_dom@v0.1.45/deno-dom-wasm.ts"
+    "canvas": "https://deno.land/x/canvas@v1.4.1/mod.ts"
   }
 }

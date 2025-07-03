@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std/http/server.ts";
-import { Canvas } from "canvas";
+import { createCanvas } from "canvas";
 import { crypto } from "https://deno.land/std/crypto/mod.ts";
 
 // In-memory cache for generated images
@@ -74,7 +74,7 @@ const server = serve(async (req) => {
       }
       
       // Create canvas
-      const canvas = new Canvas(1200, 630);
+      const canvas = createCanvas(1200, 630);
       const ctx = canvas.getContext('2d');
       
       // Draw gradient background
@@ -111,7 +111,7 @@ const server = serve(async (req) => {
       }
       
       // Generate PNG
-      const screenshot = canvas.toBuffer('image/png');
+      const screenshot = canvas.toBuffer();
       
       // Cache the generated image
       imageCache.set(cache_key, screenshot);
