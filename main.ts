@@ -78,7 +78,9 @@ const server = serve(async (req) => {
       const rendered_html = render_template(template_content, template_data);
       
       // Launch browser
-      const browser = await chromium.launch();
+      const browser = await chromium.launch({
+        executablePath: '/usr/bin/chromium'
+      });
       const page = await browser.newPage();
       
       // Set viewport to OG image size

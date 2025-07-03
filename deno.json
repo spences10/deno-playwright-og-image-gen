@@ -1,8 +1,7 @@
 {
   "tasks": {
-    "start": "deno run -A --unstable npm:playwright install chromium && deno run --allow-net --allow-run --allow-read --allow-write --allow-env --allow-sys main.ts",
-    "dev": "deno run --allow-net --allow-run --allow-read --allow-write --allow-env --allow-sys --watch main.ts",
-    "install-playwright": "deno run -A --unstable npm:playwright install chromium"
+    "start": "deno run --allow-net --allow-run --allow-read --allow-write --allow-env --allow-sys main.ts",
+    "dev": "deno run --allow-net --allow-run --allow-read --allow-write --allow-env --allow-sys --watch main.ts"
   },
   "imports": {
     "playwright": "npm:playwright@^1.40.0"
