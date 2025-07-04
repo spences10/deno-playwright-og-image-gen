@@ -2,6 +2,8 @@ import { Context, Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { secureHeaders } from "hono/secure-headers";
+import { promises as fs } from "node:fs";
+import { join } from "node:path";
 import { og_params } from "./types/og-params";
 import { image_generator } from "./utils/image-generator";
 import { template_renderer } from "./utils/template-renderer";
@@ -13,6 +15,134 @@ const image_generator_instance = new image_generator();
 // Setup graceful shutdown
 image_generator_instance.setup_shutdown_handlers();
 
+// Hybrid cache setup
+const CACHE_DIR = join(process.cwd(), "cache");
+const CACHE_TTL = Number(process.env.DEFAULT_CACHE_TTL) || 86400; // 24 hours in seconds
+const HTTP_CACHE_TTL = Number(process.env.HTTP_CACHE_TTL) || 86400; // 24 hours for browsers/CDNs
+const MAX_RAM_CACHE_SIZE = Number(process.env.IMAGE_CACHE_MAX_SIZE) || 100;
+
+// RAM cache (hot - most recently accessed)
+interface RamCacheEntry {
+	buffer: Buffer;
+	timestamp: number;
+}
+
+const ram_cache = new Map<string, RamCacheEntry>();
+
+// Ensure cache directory exists
+async function ensure_cache_dir() {
+	try {
+		await fs.access(CACHE_DIR);
+	} catch {
+		await fs.mkdir(CACHE_DIR, { recursive: true });
+	}
+}
+
+// Initialize cache directory
+ensure_cache_dir().catch(console.error);
+
+// Cache cleanup function
+function cleanup_cache() {
+	const now = Date.now();
+
+	// Clean up RAM cache - remove expired entries
+	for (const [key, entry] of ram_cache.entries()) {
+		if (now - entry.timestamp > CACHE_TTL * 1000) {
+			ram_cache.delete(key);
+		}
+	}
+
+	// If RAM cache still too big, remove oldest entries
+	if (ram_cache.size > MAX_RAM_CACHE_SIZE) {
+		const entries = Array.from(ram_cache.entries()).sort(
+			([, a], [, b]) => a.timestamp - b.timestamp
+		);
+
+		const to_remove = entries.slice(0, ram_cache.size - MAX_RAM_CACHE_SIZE);
+		for (const [key] of to_remove) {
+			ram_cache.delete(key);
+		}
+	}
+}
+
+// Run cache cleanup every 2 hours
+setInterval(cleanup_cache, 2 * 60 * 60 * 1000);
+
+// Hybrid cache functions
+async function get_from_disk_cache(cache_key: string): Promise<Buffer | null> {
+	try {
+		const file_path = join(
+			CACHE_DIR,
+			`${cache_key.replace(/[^a-zA-Z0-9\-_]/g, "_")}.png`
+		);
+		const stats = await fs.stat(file_path);
+
+		// Check if file is expired
+		const age = Date.now() - stats.mtime.getTime();
+		if (age > CACHE_TTL * 1000) {
+			await fs.unlink(file_path).catch(() => {}); // Clean up expired file
+			return null;
+		}
+
+		return await fs.readFile(file_path);
+	} catch {
+		return null;
+	}
+}
+
+async function save_to_disk_cache(
+	cache_key: string,
+	buffer: Buffer
+): Promise<void> {
+	try {
+		const file_path = join(
+			CACHE_DIR,
+			`${cache_key.replace(/[^a-zA-Z0-9\-_]/g, "_")}.png`
+		);
+		await fs.writeFile(file_path, buffer);
+	} catch (error) {
+		console.error("Failed to save to disk cache:", error);
+	}
+}
+
+async function get_cached_image(
+	cache_key: string
+): Promise<{ buffer: Buffer; source: "ram" | "disk" } | null> {
+	// Check RAM cache first (fastest)
+	const ram_entry = ram_cache.get(cache_key);
+	if (ram_entry) {
+		const age = Date.now() - ram_entry.timestamp;
+		if (age < CACHE_TTL * 1000) {
+			return { buffer: ram_entry.buffer, source: "ram" };
+		} else {
+			ram_cache.delete(cache_key);
+		}
+	}
+
+	// Check disk cache (warm)
+	const disk_buffer = await get_from_disk_cache(cache_key);
+	if (disk_buffer) {
+		// Promote to RAM cache
+		ram_cache.set(cache_key, {
+			buffer: disk_buffer,
+			timestamp: Date.now(),
+		});
+		return { buffer: disk_buffer, source: "disk" };
+	}
+
+	return null;
+}
+
+async function cache_image(cache_key: string, buffer: Buffer): Promise<void> {
+	const timestamp = Date.now();
+
+	// Save to RAM cache
+	ram_cache.set(cache_key, { buffer, timestamp });
+
+	// Save to disk cache (async, don't wait)
+	save_to_disk_cache(cache_key, buffer).catch(console.error);
+}
+
 // Middleware
 app.use("*", logger());
 app.use("*", secureHeaders());
@@ -21,7 +151,10 @@ app.use(
 	cors({
 		origin:
 			process.env.NODE_ENV === "production"
-				? ["https://scottspence.com", "https://www.scottspence.com"]
+				? process.env.ALLOWED_ORIGINS?.split(",") || [
+						"https://scottspence.com",
+						"https://www.scottspence.com",
+				  ]
 				: "*",
 		allowMethods: ["GET"],
 		allowHeaders: ["Content-Type"],
@@ -39,8 +172,8 @@ if (process.env.NODE_ENV === "production") {
 		const client_ip =
 			c.req.header("x-forwarded-for") || c.req.header("x-real-ip") || "unknown";
 		const now = Date.now();
-		const window_ms = 60 * 1000; // 1 minute
-		const max_requests = 60; // 60 requests per minute
+		const window_ms = Number(process.env.RATE_LIMIT_WINDOW_MS) || 60 * 1000; // 1 minute
+		const max_requests = Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 60; // 60 requests per minute
 
 		const client_data = request_counts.get(client_ip);
 
@@ -147,10 +280,33 @@ app.get("/og", async (c: Context) => {
 		// Generate cache key
 		const cache_key = `${params.title}-${params.author}-${params.website}-${params.theme}`;
 
-		// Set cache headers (1 hour)
-		c.header("Cache-Control", "public, max-age=3600, s-maxage=3600");
+		// Check hybrid cache (RAM -> Disk -> Generate)
+		const cached_result = await get_cached_image(cache_key);
+
+		if (cached_result) {
+			// Set cache headers
+			c.header(
+				"Cache-Control",
+				`public, max-age=${HTTP_CACHE_TTL}, s-maxage=${HTTP_CACHE_TTL}`
+			);
+			c.header("Content-Type", "image/png");
+			c.header("X-Cache-Key", cache_key);
+			c.header("X-Cache-Status", `HIT-${cached_result.source.toUpperCase()}`);
+			c.header("ETag", `"${cache_key.replace(/[^a-zA-Z0-9]/g, "")}"`);
+
+			return c.body(cached_result.buffer);
+		}
+
+		// Set cache headers
+		c.header(
+			"Cache-Control",
+			`public, max-age=${HTTP_CACHE_TTL}, s-maxage=${HTTP_CACHE_TTL}`
+		);
 		c.header("Content-Type", "image/png");
 		c.header("X-Cache-Key", cache_key);
+		c.header("X-Cache-Status", "MISS");
+		c.header("ETag", `"${cache_key.replace(/[^a-zA-Z0-9]/g, "")}"`);
+		c.header("Last-Modified", new Date().toUTCString());
 
 		// Render HTML template
 		const html_content = template_renderer_instance.render_template("default", {
@@ -170,6 +326,9 @@ app.get("/og", async (c: Context) => {
 				format: "png",
 			}
 		);
+
+		// Cache the generated image (both RAM and disk)
+		await cache_image(cache_key, image_buffer);
 
 		return c.body(image_buffer);
 	} catch (error) {
@@ -193,6 +352,91 @@ app.get("/health", (c: Context) => {
 		status: "healthy",
 		timestamp: new Date().toISOString(),
 		service: "og-image-generator",
+		cache: {
+			ram_entries: ram_cache.size,
+			max_ram_size: MAX_RAM_CACHE_SIZE,
+		},
+	});
+});
+
+// Cache management endpoints
+app.delete("/cache", async (c: Context) => {
+	const ram_cleared = ram_cache.size;
+	ram_cache.clear();
+
+	// Clear disk cache
+	let disk_cleared = 0;
+	try {
+		const files = await fs.readdir(CACHE_DIR);
+		const png_files = files.filter((f) => f.endsWith(".png"));
+		await Promise.all(png_files.map((f) => fs.unlink(join(CACHE_DIR, f))));
+		disk_cleared = png_files.length;
+	} catch (error) {
+		console.error("Error clearing disk cache:", error);
+	}
+
+	return c.json({
+		message: "Cache cleared successfully",
+		ram_cleared_entries: ram_cleared,
+		disk_cleared_entries: disk_cleared,
+	});
+});
+
+app.delete("/cache/:key", async (c: Context) => {
+	const key = c.req.param("key");
+	const decoded_key = decodeURIComponent(key);
+
+	// Delete from RAM
+	const ram_deleted = ram_cache.delete(decoded_key);
+
+	// Delete from disk
+	let disk_deleted = false;
+	try {
+		const file_path = join(
+			CACHE_DIR,
+			`${decoded_key.replace(/[^a-zA-Z0-9\-_]/g, "_")}.png`
+		);
+		await fs.unlink(file_path);
+		disk_deleted = true;
+	} catch {
+		// File might not exist
+	}
+
+	return c.json({
+		message:
+			ram_deleted || disk_deleted
+				? "Cache entry deleted"
+				: "Cache entry not found",
+		key: key,
+		ram_deleted,
+		disk_deleted,
+	});
+});
+
+app.get("/cache", async (c: Context) => {
+	const ram_entries = Array.from(ram_cache.keys());
+
+	// Get disk entries
+	let disk_entries: string[] = [];
+	try {
+		const files = await fs.readdir(CACHE_DIR);
+		disk_entries = files
+			.filter((f) => f.endsWith(".png"))
+			.map((f) => f.replace(".png", ""));
+	} catch {
+		// Directory might not exist yet
+	}
+
+	return c.json({
+		ram_cache: {
+			entries: ram_entries.length,
+			max_size: MAX_RAM_CACHE_SIZE,
+			keys: ram_entries,
+		},
+		disk_cache: {
+			entries: disk_entries.length,
+			keys: disk_entries,
+		},
 	});
 });
 
