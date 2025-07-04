@@ -440,31 +440,6 @@ app.get("/cache", async (c: Context) => {
 	});
 });
 
-// Temporary debug endpoint for Unicode testing
-app.get("/debug-unicode", async (c: Context) => {
-	try {
-		const query = c.req.query();
-		const title = query.title || "🚀 Default Test";
-		
-		return c.json({
-			received_title: title,
-			title_length: title.length,
-			title_char_codes: Array.from(title).map(char => ({
-				char,
-				code: char.charCodeAt(0),
-				unicode: char.codePointAt(0)
-			})),
-			environment: {
-				node_version: process.version,
-				platform: process.platform,
-				locale: process.env.LANG || process.env.LC_ALL || 'not set'
-			}
-		});
-	} catch (error) {
-		return c.json({ error: (error as Error).message }, 500);
-	}
-});
-
 // Start server
 const port = Number(process.env.PORT) || 3000;
 
