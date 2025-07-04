@@ -22,18 +22,13 @@ export class template_renderer {
 		return template_content;
 	}
 	private sanitise_text(text: string): string {
-		// Convert Unicode characters to HTML entities to avoid Playwright ByteString issues
+		// Text is already decoded by Hono, so just escape HTML special characters
 		return text
 			.replace(/&/g, "&amp;")
 			.replace(/</g, "&lt;")
 			.replace(/>/g, "&gt;")
 			.replace(/"/g, "&quot;")
-			.replace(/'/g, "&#39;")
-			.replace(/[\u0080-\uFFFF]/g, function(match) {
-				// Handle multi-byte Unicode characters (like emojis) properly
-				const codePoint = match.codePointAt(0);
-				return codePoint ? "&#" + codePoint + ";" : match;
-			});
+			.replace(/'/g, "&#39;");
 	}
 
 	private get_theme_colours(theme: "light" | "dark") {

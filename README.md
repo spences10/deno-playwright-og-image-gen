@@ -63,10 +63,15 @@ GET /og?title=Your%20Title&author=Author&website=example.com&theme=light
 
 **Parameters:**
 
-- `title` _(required)_ - Main title text (max 200 chars)
+- `title` _(required)_ - Main title text (max 200 chars) - **Note: Avoid emojis for best cross-platform compatibility**
 - `author` _(optional)_ - Author name (max 100 chars, default: "Anonymous")
 - `website` _(optional)_ - Website domain (max 100 chars, default: "example.com")
 - `theme` _(optional)_ - Color theme: `light` or `dark` (default: "light")
+
+**Best Practices:**
+- Use descriptive text instead of emojis (e.g., "Rocket Launch" instead of 🚀)
+- Keep titles concise and readable
+- Test both light and dark themes for your content
 
 **Example:**
 
