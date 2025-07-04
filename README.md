@@ -1,6 +1,6 @@
 # Coolify OG Image Generator
 
-A modern TypeScript-based Open Graph image generator service built with Hono and Puppeteer, designed for deployment on Coolify.
+A modern TypeScript-based Open Graph image generator service built with Hono and Playwright, designed for deployment on Coolify.
 
 ## Features
 
@@ -9,7 +9,8 @@ A modern TypeScript-based Open Graph image generator service built with Hono and
 - 🔒 **Production Ready** - Rate limiting, CORS configuration, and environment-based settings
 - 📱 **Social Media Optimized** - Generates 1200x630 images perfect for Twitter, Facebook, LinkedIn
 - 🛠️ **Cache Management** - Built-in endpoints for cache invalidation and monitoring
-- 🐳 **Coolify Compatible** - Deploys seamlessly on Coolify without Docker configuration
+- 🐳 **Coolify Compatible** - Deploys seamlessly on Coolify with automatic Playwright browser installation
+- 🏗️ **Multi-Architecture** - Works on both AMD64 and ARM64 platforms
 
 ## Quick Start
 
@@ -39,14 +40,17 @@ IMAGE_CACHE_MAX_SIZE=100         # Maximum images in RAM cache (disk unlimited)
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
+
+# Install Playwright browsers (for local development)
+pnpm dlx playwright install chromium
 
 # Development
-npm run dev
+pnpm run dev
 
 # Production build
-npm run build
-npm start
+pnpm run build
+pnpm start
 ```
 
 ## API Usage
@@ -109,9 +113,22 @@ Removes image from both RAM and disk caches.
 
 1. **Connect Repository** - Add your Git repository to Coolify
 2. **Set Environment Variables** - Configure the environment variables listed above
-3. **Deploy** - Coolify will automatically build and deploy your service
+3. **Deploy** - Coolify will automatically:
+   - Install dependencies with pnpm
+   - Install Playwright Chromium browser with system dependencies
+   - Build and deploy your service
 
-No Dockerfile needed! Coolify handles the containerization automatically.
+No Dockerfile needed! The nixpacks.toml configuration handles everything automatically, including cross-platform browser installation.
+
+### Why Playwright?
+
+This service uses Playwright instead of Puppeteer for several key advantages:
+
+- **Cross-Platform Support** - Works reliably on both AMD64 and ARM64 architectures
+- **Container-Optimized** - Designed specifically for containerized environments
+- **Simplified Dependencies** - Automatic browser installation with system dependencies
+- **Better Error Handling** - More robust browser process management
+- **Production Ready** - Extensively tested in cloud deployment scenarios
 
 ## Performance
 
@@ -160,7 +177,7 @@ src/
 ├── types/
 │   └── og-params.ts         # TypeScript interfaces
 ├── utils/
-│   ├── image-generator.ts   # Puppeteer image generation
+│   ├── image-generator.ts   # Playwright image generation
 │   └── template-renderer.ts # HTML template rendering
 └── templates/
     └── default.html         # OG image template
@@ -176,7 +193,7 @@ src/
 
 ```bash
 # Watch mode with hot reload
-npm run dev
+pnpm run dev
 
 # Test image generation
 curl "http://localhost:3000/og?title=Test" --output test.png
@@ -198,8 +215,9 @@ Production deployments include rate limiting:
 The service includes comprehensive error handling:
 
 - Parameter validation with detailed error messages
-- Graceful Puppeteer shutdown on process termination
+- Graceful Playwright shutdown on process termination
 - Development vs production error responses
+- Cross-platform browser compatibility
 
 ## License
 

@@ -1,7 +1,7 @@
 {
 	"name": "coolify-og-image-gen",
 	"version": "1.0.0",
-	"description": "Open Graph image generator service for Coolify deployment",
+	"description": "Open Graph image generator service built with Hono and Playwright for Coolify deployment",
 	"main": "dist/server.js",
 	"scripts": {
 		"build": "tsc",
