@@ -25,6 +25,7 @@ export class image_generator {
 		try {
 			this.browser = await puppeteer.launch({
 				headless: true,
+				executablePath: process.env.CHROME_EXECUTABLE_PATH || '/usr/bin/google-chrome-stable',
 				args: [
 					"--no-sandbox",
 					"--disable-setuid-sandbox",
@@ -34,6 +35,9 @@ export class image_generator {
 					"--no-zygote",
 					"--single-process",
 					"--disable-gpu",
+					"--disable-background-timer-throttling",
+					"--disable-backgrounding-occluded-windows",
+					"--disable-renderer-backgrounding",
 				],
 				defaultViewport: {
 					width: 1200,
