@@ -42,10 +42,12 @@ export class image_generator {
 
 			// Use system Chrome if available (Nixpacks deployment)
 			if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-				console.log(`Using system Chrome at: ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
+				console.log(
+					`Using system Chrome at: ${process.env.PUPPETEER_EXECUTABLE_PATH}`
+				);
 				launch_options.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
 			} else {
-				console.log('Using Puppeteer bundled Chromium...');
+				console.log("Using Puppeteer bundled Chromium...");
 			}
 
 			this.browser = await puppeteer.launch(launch_options);

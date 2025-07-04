@@ -7,12 +7,12 @@ dependsOn = ['setup']
 cmds = [
     'apt-get update',
     'apt-get install -y chromium-browser',
-    'npm ci'
+    'pnpm install --frozen-lockfile'
 ]
 
 [phases.build]
 dependsOn = ['install']
-cmds = ['npm run build']
+cmds = ['pnpm run build']
 
 [start]
-cmd = 'npm start'
+cmd = 'pnpm start'
