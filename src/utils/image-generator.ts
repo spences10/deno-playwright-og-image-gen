@@ -30,21 +30,30 @@ export class image_generator {
 					"--disable-setuid-sandbox",
 					"--disable-dev-shm-usage",
 					"--disable-gpu",
-					"--no-zygote",
-					"--single-process",
-					"--disable-accelerated-2d-canvas",
-					"--no-first-run",
+					"--disable-software-rasterizer",
 					"--disable-background-timer-throttling",
 					"--disable-backgrounding-occluded-windows",
 					"--disable-renderer-backgrounding",
+					"--disable-features=TranslateUI",
+					"--disable-ipc-flooding-protection",
+					"--disable-web-security",
+					"--disable-features=VizDisplayCompositor",
+					"--disable-extensions",
+					"--no-first-run",
+					"--no-default-browser-check",
+					"--no-zygote",
+					"--single-process",
+					"--memory-pressure-off",
+					"--max_old_space_size=4096",
 				],
 			};
 
 			console.log("Launching Playwright Chromium browser...");
 			this.browser = await chromium.launch(launch_options);
 
-			// Handle browser disconnect
+			// Handle browser disconnect with restart
 			this.browser.on("disconnected", () => {
+				console.log("Browser disconnected, clearing reference");
 				this.browser = null;
 			});
 
@@ -63,40 +72,66 @@ export class image_generator {
 			format: "png",
 		}
 	): Promise<Buffer> {
-		const browser = await this.get_browser();
-		const page = await browser.newPage();
+		let retries = 2;
+		let lastError: Error;
 
-		try {
-			await page.setViewportSize({
-				width: options.width,
-				height: options.height,
-			});
+		for (let attempt = 0; attempt <= retries; attempt++) {
+			try {
+				const browser = await this.get_browser();
+				const page = await browser.newPage();
 
-			// Set content and wait for fonts and images to load
-			await page.setContent(html_content, {
-				waitUntil: "networkidle",
-			});
+				try {
+					await page.setViewportSize({
+						width: options.width,
+						height: options.height,
+					});
 
-			// Wait a bit more for fonts to render properly
-			await new Promise((resolve) => setTimeout(resolve, 1000));
+					// Set content and wait for fonts and images to load
+					await page.setContent(html_content, {
+						waitUntil: "networkidle",
+					});
 
-			// Take screenshot
-			const screenshot = await page.screenshot({
-				type: options.format,
-				quality: options.format === "jpeg" ? options.quality || 90 : undefined,
-				fullPage: false,
-				clip: {
-					x: 0,
-					y: 0,
-					width: options.width,
-					height: options.height,
-				},
-			});
+					// Wait a bit more for fonts to render properly
+					await new Promise((resolve) => setTimeout(resolve, 1000));
 
-			return screenshot;
-		} finally {
-			await page.close();
+					// Take screenshot
+					const screenshot = await page.screenshot({
+						type: options.format,
+						quality:
+							options.format === "jpeg" ? options.quality || 90 : undefined,
+						fullPage: false,
+						clip: {
+							x: 0,
+							y: 0,
+							width: options.width,
+							height: options.height,
+						},
+					});
+
+					return screenshot;
+				} finally {
+					await page.close().catch(() => {}); // Ignore close errors
+				}
+			} catch (error) {
+				lastError = error as Error;
+				console.error(`Image generation attempt ${attempt + 1} failed:`, error);
+
+				// Clear browser reference to force restart on next attempt
+				if (this.browser) {
+					await this.browser.close().catch(() => {});
+					this.browser = null;
+				}
+
+				if (attempt === retries) {
+					throw lastError;
+				}
+
+				// Wait before retry
+				await new Promise((resolve) => setTimeout(resolve, 1000));
+			}
 		}
+
+		throw lastError!;
 	}
 
 	public async close(): Promise<void> {
