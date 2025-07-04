@@ -21,13 +21,9 @@ export class template_renderer {
 
 		return template_content;
 	}
-
 	private sanitise_text(text: string): string {
-		// First decode any URL encoding to get proper Unicode
-		const decoded = decodeURIComponent(text);
-
-		// Then escape HTML special characters while preserving Unicode
-		return decoded
+		// Text is already decoded by Hono, so just escape HTML special characters
+		return text
 			.replace(/&/g, "&amp;")
 			.replace(/</g, "&lt;")
 			.replace(/>/g, "&gt;")
