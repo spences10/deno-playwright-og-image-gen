@@ -23,9 +23,7 @@ export class image_generator {
 		this.is_initializing = true;
 
 		try {
-			console.log('Launching Puppeteer with bundled Chromium...');
-			
-			const launch_options = {
+			const launch_options: any = {
 				headless: true,
 				args: [
 					"--no-sandbox",
@@ -41,6 +39,14 @@ export class image_generator {
 					"--disable-renderer-backgrounding",
 				],
 			};
+
+			// Use system Chrome if available (Nixpacks deployment)
+			if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+				console.log(`Using system Chrome at: ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
+				launch_options.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+			} else {
+				console.log('Using Puppeteer bundled Chromium...');
+			}
 
 			this.browser = await puppeteer.launch(launch_options);
 

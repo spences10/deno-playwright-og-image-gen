@@ -1,0 +1,18 @@
+[variables]
+PUPPETEER_SKIP_DOWNLOAD = 'true'
+PUPPETEER_EXECUTABLE_PATH = '/usr/bin/chromium-browser'
+
+[phases.install]
+dependsOn = ['setup']
+cmds = [
+    'apt-get update',
+    'apt-get install -y chromium-browser',
+    'npm ci'
+]
+
+[phases.build]
+dependsOn = ['install']
+cmds = ['npm run build']
+
+[start]
+cmd = 'npm start'
