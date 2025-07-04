@@ -20,23 +20,12 @@ export class image_generator {
 					"--no-sandbox",
 					"--disable-setuid-sandbox",
 					"--disable-dev-shm-usage",
-					"--disable-gpu",
-					"--disable-software-rasterizer",
-					"--disable-background-timer-throttling",
-					"--disable-backgrounding-occluded-windows",
-					"--disable-renderer-backgrounding",
-					"--disable-features=TranslateUI,VizDisplayCompositor",
-					"--disable-extensions",
-					"--no-first-run",
-					"--no-default-browser-check",
-					"--no-zygote",
-					"--single-process",
-					"--disable-web-security",
-					"--disable-features=site-per-process",
 				],
 			};
 
-			console.log("Launching fresh Playwright Chromium browser...");
+			console.log(
+				"Launching Playwright Chromium browser from image..."
+			);
 			browser = await chromium.launch(launch_options);
 			const page = await browser.newPage();
 

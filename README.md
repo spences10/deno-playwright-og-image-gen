@@ -114,11 +114,11 @@ Removes image from both RAM and disk caches.
 1. **Connect Repository** - Add your Git repository to Coolify
 2. **Set Environment Variables** - Configure the environment variables listed above
 3. **Deploy** - Coolify will automatically:
+   - Use the official Playwright Docker image (browsers pre-installed)
    - Install dependencies with pnpm
-   - Install Playwright Chromium browser with system dependencies
    - Build and deploy your service
 
-No Dockerfile needed! The nixpacks.toml configuration handles everything automatically, including cross-platform browser installation.
+The project uses a custom Dockerfile with the official Microsoft Playwright image (`mcr.microsoft.com/playwright:v1.53.1-noble`) for maximum reliability and performance.
 
 ### Why Playwright?
 
