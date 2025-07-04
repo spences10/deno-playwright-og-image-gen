@@ -23,28 +23,26 @@ export class image_generator {
 		this.is_initializing = true;
 
 		try {
-			this.browser = await puppeteer.launch({
+			console.log('Launching Puppeteer with bundled Chromium...');
+			
+			const launch_options = {
 				headless: true,
-				executablePath: process.env.CHROME_EXECUTABLE_PATH || '/usr/bin/google-chrome-stable',
 				args: [
 					"--no-sandbox",
 					"--disable-setuid-sandbox",
 					"--disable-dev-shm-usage",
-					"--disable-accelerated-2d-canvas",
-					"--no-first-run",
+					"--disable-gpu",
 					"--no-zygote",
 					"--single-process",
-					"--disable-gpu",
+					"--disable-accelerated-2d-canvas",
+					"--no-first-run",
 					"--disable-background-timer-throttling",
 					"--disable-backgrounding-occluded-windows",
 					"--disable-renderer-backgrounding",
 				],
-				defaultViewport: {
-					width: 1200,
-					height: 630,
-					deviceScaleFactor: 2,
-				},
-			});
+			};
+
+			this.browser = await puppeteer.launch(launch_options);
 
 			// Handle browser disconnect
 			this.browser.on("disconnected", () => {
