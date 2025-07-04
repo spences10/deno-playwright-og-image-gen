@@ -247,24 +247,50 @@ function validate_og_params(query: Record<string, string | undefined>): {
 // Routes
 app.get("/", async (c: Context) => {
 	try {
-		const protocol = c.req.header("x-forwarded-proto") || 
+		const protocol =
+			c.req.header("x-forwarded-proto") ||
 			(c.req.url.startsWith("https") ? "https" : "http");
 		const host = c.req.header("host") || `localhost:3000`;
 		const base_url = `${protocol}://${host}`;
 		const og_image_url = `${base_url}/og?title=Coolify%20OG%20Image%20Generator&author=Coolify&website=coolify.io&theme=light`;
-		
+
 		const template_path = join(process.cwd(), "src/templates/index.html");
 		let html = await fs.readFile(template_path, "utf-8");
-		
+
 		html = html
 			.replace(/{{OG_IMAGE_URL}}/g, og_image_url)
 			.replace(/{{BASE_URL}}/g, base_url);
-		
+
 		c.header("Content-Type", "text/html; charset=utf-8");
 		return c.html(html);
 	} catch (error) {
 		console.error("Error loading index template:", error);
 		return c.json({ error: "Could not load page" }, 500);
+	}
+});
+
+// Preview endpoint for testing the design
+app.get("/preview", async (c: Context) => {
+	try {
+		const query = c.req.query();
+		const title = query.title || "";
+		const author = query.author || "";
+		const website = query.website || "";
+		const theme = (query.theme as "light" | "dark") || "light";
+
+		// Render HTML template for preview
+		const html_content = template_renderer_instance.render_template("default", {
+			title,
+			author,
+			website,
+			theme,
+		});
+
+		c.header("Content-Type", "text/html; charset=utf-8");
+		return c.html(html_content);
+	} catch (error) {
+		console.error("Error generating preview:", error);
+		return c.json({ error: "Could not generate preview" }, 500);
 	}
 });
 
