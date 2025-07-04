@@ -1,4 +1,4 @@
-import puppeteer, { Browser } from "puppeteer";
+import { chromium, Browser, Page } from "playwright";
 import { image_generation_options } from "../types/og-params";
 
 export class image_generator {
@@ -6,7 +6,7 @@ export class image_generator {
 	private is_initializing = false;
 
 	private async get_browser(): Promise<Browser> {
-		if (this.browser && this.browser.connected) {
+		if (this.browser && this.browser.isConnected()) {
 			return this.browser;
 		}
 
@@ -15,7 +15,7 @@ export class image_generator {
 			while (this.is_initializing) {
 				await new Promise((resolve) => setTimeout(resolve, 100));
 			}
-			if (this.browser && this.browser.connected) {
+			if (this.browser && this.browser.isConnected()) {
 				return this.browser;
 			}
 		}
@@ -40,17 +40,8 @@ export class image_generator {
 				],
 			};
 
-			// Use system Chrome if available (Nixpacks deployment)
-			if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-				console.log(
-					`Using system Chrome at: ${process.env.PUPPETEER_EXECUTABLE_PATH}`
-				);
-				launch_options.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-			} else {
-				console.log("Using Puppeteer bundled Chromium...");
-			}
-
-			this.browser = await puppeteer.launch(launch_options);
+			console.log("Launching Playwright Chromium browser...");
+			this.browser = await chromium.launch(launch_options);
 
 			// Handle browser disconnect
 			this.browser.on("disconnected", () => {
@@ -76,15 +67,14 @@ export class image_generator {
 		const page = await browser.newPage();
 
 		try {
-			await page.setViewport({
+			await page.setViewportSize({
 				width: options.width,
 				height: options.height,
-				deviceScaleFactor: options.device_scale_factor,
 			});
 
 			// Set content and wait for fonts and images to load
 			await page.setContent(html_content, {
-				waitUntil: ["networkidle0", "domcontentloaded"],
+				waitUntil: "networkidle",
 			});
 
 			// Wait a bit more for fonts to render properly
@@ -103,7 +93,7 @@ export class image_generator {
 				},
 			});
 
-			return screenshot as Buffer;
+			return screenshot;
 		} finally {
 			await page.close();
 		}

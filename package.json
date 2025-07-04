@@ -13,7 +13,7 @@
 		"og",
 		"open-graph",
 		"image-generator",
-		"puppeteer",
+		"playwright",
 		"typescript"
 	],
 	"author": "Scott Spence",
@@ -21,7 +21,7 @@
 	"dependencies": {
 		"hono": "^4.6.14",
 		"@hono/node-server": "^1.13.1",
-		"puppeteer": "^24.11.1"
+		"playwright": "^1.40.0"
 	},
 	"devDependencies": {
 		"@types/node": "^20.10.5",
