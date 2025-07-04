@@ -1,6 +1,11 @@
 # Use the official Playwright image with Node.js and browsers pre-installed
 FROM mcr.microsoft.com/playwright:v1.53.2-noble
 
+# Set proper locale for Unicode support
+ENV LANG=en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+
 # Set working directory
 WORKDIR /app
 
