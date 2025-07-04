@@ -1,4 +1,4 @@
-import { chromium, Browser, Page } from "playwright";
+import { Browser, chromium } from "playwright";
 import { image_generation_options } from "../types/og-params";
 
 export class image_generator {
