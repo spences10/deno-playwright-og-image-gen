@@ -23,7 +23,11 @@ export class template_renderer {
 	}
 
 	private sanitise_text(text: string): string {
-		return text
+		// First decode any URL encoding to get proper Unicode
+		const decoded = decodeURIComponent(text);
+
+		// Then escape HTML special characters while preserving Unicode
+		return decoded
 			.replace(/&/g, "&amp;")
 			.replace(/</g, "&lt;")
 			.replace(/>/g, "&gt;")
