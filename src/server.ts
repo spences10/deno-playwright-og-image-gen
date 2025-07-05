@@ -295,6 +295,7 @@ app.get("/preview", async (c: Context) => {
 });
 
 app.get("/og", async (c: Context) => {
+	const start_time = Date.now();
 	try {
 		// Get query parameters
 		const query = c.req.query();
@@ -320,10 +321,15 @@ app.get("/og", async (c: Context) => {
 				`public, max-age=${HTTP_CACHE_TTL}, s-maxage=${HTTP_CACHE_TTL}`
 			);
 			c.header("Content-Type", "image/png");
+			c.header("Content-Length", cached_result.buffer.length.toString());
 			c.header("X-Cache-Key", cache_key);
 			c.header("X-Cache-Status", `HIT-${cached_result.source.toUpperCase()}`);
 			c.header("ETag", `"${cache_key.replace(/[^a-zA-Z0-9]/g, "")}"`);
 
+			const response_time = Date.now() - start_time;
+			console.log(
+				`✅ Cache hit (${cached_result.source}): ${cache_key} - ${response_time}ms`
+			);
 			return c.body(cached_result.buffer);
 		}
 
@@ -360,6 +366,8 @@ app.get("/og", async (c: Context) => {
 		// Cache the generated image (both RAM and disk)
 		await cache_image(cache_key, image_buffer);
 
+		const response_time = Date.now() - start_time;
+		console.log(`🔄 Generated fresh: ${cache_key} - ${response_time}ms`);
 		return c.body(image_buffer);
 	} catch (error) {
 		console.error("Error generating OG image:", error);
@@ -391,9 +399,9 @@ app.get("/health", (c: Context) => {
 
 // Auth middleware for cache management
 const require_auth = async (c: Context, next: Function) => {
-	const token = c.req.header('Authorization');
+	const token = c.req.header("Authorization");
 	if (!token || token !== `Bearer ${process.env.ADMIN_TOKEN}`) {
-		return c.json({ error: 'Unauthorized' }, 401);
+		return c.json({ error: "Unauthorized" }, 401);
 	}
 	return await next();
 };
@@ -485,12 +493,62 @@ const port = Number(process.env.PORT) || 3000;
 // For Node.js, we need to use the serve function
 import { serve } from "@hono/node-server";
 
+// Pre-warm cache with popular posts
+async function pre_warm_cache() {
+	try {
+		console.log("🔥 Pre-warming cache with popular posts...");
+
+		// Fetch popular posts from scottspence.com
+		const response = await fetch(
+			"https://scottspence.com/api/fetch-popular-posts"
+		);
+		if (!response.ok) {
+			console.log("❌ Failed to fetch popular posts, skipping pre-warm");
+			return;
+		}
+
+		const popular_posts = (await response.json()) as {
+			daily?: any[];
+			monthly?: any[];
+			yearly?: any[];
+		};
+		const all_posts = [
+			...(popular_posts.daily || []).slice(0, 5),
+			...(popular_posts.monthly || []).slice(0, 5),
+			...(popular_posts.yearly || []).slice(0, 5),
+		];
+
+		// Convert popular posts to OG image params
+		const images_to_warm = all_posts.map((post: any) => ({
+			title: post.title,
+			author: "Scott Spence",
+			website: "scottspence.com",
+			theme: "light",
+		}));
+
+		for (const params of images_to_warm) {
+			const cache_key = `${params.title}-${params.author}-${params.website}-${params.theme}`;
+			const cached = await get_cached_image(cache_key);
+			if (cached && cached.source === "disk") {
+				console.log(`✅ Pre-warmed RAM: ${params.title}`);
+			}
+		}
+
+		console.log(`🔥 Pre-warmed ${images_to_warm.length} images`);
+	} catch (error) {
+		console.error("❌ Error pre-warming cache:", error);
+	}
+}
+
 serve({
 	fetch: app.fetch,
 	port: port,
 });
 
 console.log(`🚀 OG Image Generator server running on port ${port}`);
+
+// Pre-warm cache after startup
+setTimeout(pre_warm_cache, 1000);
 console.log(`📝 Environment: ${process.env.NODE_ENV || "development"}`);
 console.log(`🔗 Health check: http://localhost:${port}/health`);
 console.log(
