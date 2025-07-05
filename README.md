@@ -132,6 +132,23 @@ Removes image from both RAM and disk caches. Requires authentication.
    - Install dependencies with pnpm
    - Build and deploy your service
 
+### CDN Optimization with Cloudflare
+
+For optimal performance with social media crawlers, configure Cloudflare Cache Rules:
+
+1. **Create Cache Rule** in Cloudflare Dashboard → Caching → Cache Rules
+2. **Filter Expression**: `(http.request.uri contains "/og")`
+3. **Cache Settings**:
+   - **Cache Eligibility**: Eligible for cache
+   - **Edge TTL**: Ignore cache-control header → 1 day
+   - **Browser TTL**: Override origin → 2 hours
+   - **Cache Key**: Leave defaults (includes all query parameters)
+
+This setup provides:
+- **Instant Global Delivery**: Images cached at Cloudflare edge locations worldwide
+- **Reduced Server Load**: Popular images served from CDN without hitting your server
+- **Improved OG Tester Compatibility**: Sub-second response times for social media crawlers
+
 ### Cache Configuration for Different Site Sizes
 
 For small sites (500 pages or less):
@@ -187,6 +204,15 @@ This service uses Playwright instead of Puppeteer for several key advantages:
   - Browsers and CDNs cache responses
   - Industry standard duration for OG images
 
+### Cache Pre-warming
+
+The service includes intelligent cache pre-warming on startup:
+
+- **Dynamic Popular Content**: Automatically fetches popular posts from connected sites
+- **RAM Cache Promotion**: Pre-loads most-viewed content from disk to RAM
+- **Zero Maintenance**: No hardcoded lists to maintain - adapts based on real traffic data
+- **Faster Social Sharing**: Popular content serves instantly to OG crawlers
+
 ### Cache Flow
 
 1. **Request** → Check RAM cache (fastest)
@@ -203,6 +229,7 @@ All responses include debug headers:
   - `HIT-RAM` - Served from memory (fastest)
   - `HIT-DISK` - Served from disk cache
   - `MISS` - Generated new image
+- `Content-Length` - Image size for faster crawler processing
 
 ## Development
 
@@ -247,6 +274,45 @@ Production deployments include rate limiting:
 - **Max Requests**: 60 per window (configurable)
 - **Based on**: Client IP address
 
+## Troubleshooting
+
+### OG Image Testers Showing "Broken" Images
+
+If OG image testing tools show broken images but social platforms work correctly:
+
+**Common Causes:**
+- **Initial Generation Delay**: First-time image generation takes 2-3 seconds
+- **Tester Timeouts**: Many OG testers have very short timeout periods (2-5 seconds)
+- **Cache Miss**: Image not pre-warmed or evicted from cache
+
+**Solutions:**
+1. **CDN Setup**: Configure Cloudflare Cache Rules (see CDN Optimization section)
+2. **Pre-warming**: Popular content is automatically pre-warmed on service restart
+3. **Manual Pre-warm**: Visit the OG URL directly to cache before sharing
+
+**Why Social Platforms Work Better:**
+- Longer timeout periods (10-30 seconds)
+- Better retry logic
+- More patient crawling behavior
+
+### Performance Monitoring
+
+Monitor service performance using the built-in logging:
+
+```bash
+# View cache hit/miss logs
+docker logs your-container-name | grep "Cache hit\|Generated fresh"
+
+# Example output:
+✅ Cache hit (ram): My Post Title - 15ms
+🔄 Generated fresh: New Post Title - 2341ms
+```
+
+Response time guidelines:
+- **RAM hits**: < 50ms (excellent)
+- **Disk hits**: 50-200ms (good)
+- **Fresh generation**: 2000-4000ms (normal for first request)
+
 ## Error Handling
 
 The service includes comprehensive error handling:
@@ -255,6 +321,7 @@ The service includes comprehensive error handling:
 - Graceful Playwright shutdown on process termination
 - Development vs production error responses
 - Cross-platform browser compatibility
+- Automatic retry logic for failed image generation
 
 ## License
 
