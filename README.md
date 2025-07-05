@@ -16,7 +16,7 @@ A modern TypeScript-based Open Graph image generator service built with Hono and
 
 ### Environment Variables
 
-Copy `.env.example` to `.env` and configure:
+Configure these environment variables in Coolify:
 
 ```bash
 # Server Configuration
@@ -39,23 +39,6 @@ IMAGE_CACHE_MAX_SIZE=100         # Maximum images in RAM cache (disk unlimited)
 ADMIN_TOKEN=your-secret-token-here
 ```
 
-### Installation
-
-```bash
-# Install dependencies
-pnpm install
-
-# Install Playwright browsers (for local development)
-pnpm dlx playwright install chromium
-
-# Development
-pnpm run dev
-
-# Production build
-pnpm run build
-pnpm start
-```
-
 ## API Usage
 
 ### Generate OG Image
@@ -72,6 +55,7 @@ GET /og?title=Your%20Title&author=Author&website=example.com&theme=light
 - `theme` _(optional)_ - Color theme: `light` or `dark` (default: "light")
 
 **Best Practices:**
+
 - Use descriptive text instead of emojis (e.g., "Rocket Launch" instead of 🚀)
 - Keep titles concise and readable
 - Test both light and dark themes for your content
@@ -82,6 +66,14 @@ GET /og?title=Your%20Title&author=Author&website=example.com&theme=light
 curl "https://your-og-service.com/og?title=Hello%20World&author=Scott%20Spence&website=scottspence.com&theme=dark" \
   --output image.png
 ```
+
+### Preview Template
+
+```
+GET /preview?title=Your%20Title&author=Author&website=example.com&theme=light
+```
+
+Returns HTML preview of the OG image design without generating the actual image. Useful for testing template changes and styling.
 
 ### Health Check
 
@@ -145,6 +137,7 @@ For optimal performance with social media crawlers, configure Cloudflare Cache R
    - **Cache Key**: Leave defaults (includes all query parameters)
 
 This setup provides:
+
 - **Instant Global Delivery**: Images cached at Cloudflare edge locations worldwide
 - **Reduced Server Load**: Popular images served from CDN without hitting your server
 - **Improved OG Tester Compatibility**: Sub-second response times for social media crawlers
@@ -152,6 +145,7 @@ This setup provides:
 ### Cache Configuration for Different Site Sizes
 
 For small sites (500 pages or less):
+
 ```bash
 DEFAULT_CACHE_TTL=31536000       # 1 year (nearly permanent)
 HTTP_CACHE_TTL=31536000          # 1 year for browsers/CDNs
@@ -159,6 +153,7 @@ IMAGE_CACHE_MAX_SIZE=500         # Match your page count
 ```
 
 For medium sites (500-5000 pages):
+
 ```bash
 DEFAULT_CACHE_TTL=2592000        # 30 days
 HTTP_CACHE_TTL=2592000           # 30 days for browsers/CDNs
@@ -166,6 +161,7 @@ IMAGE_CACHE_MAX_SIZE=1000        # Adjust based on memory
 ```
 
 For large sites (5000+ pages):
+
 ```bash
 DEFAULT_CACHE_TTL=86400          # 24 hours (default)
 HTTP_CACHE_TTL=86400             # 24 hours for browsers/CDNs
@@ -173,16 +169,6 @@ IMAGE_CACHE_MAX_SIZE=100         # Keep RAM usage low
 ```
 
 The project uses a custom Dockerfile with the official Microsoft Playwright image (`mcr.microsoft.com/playwright:v1.53.1-noble`) for maximum reliability and performance.
-
-### Why Playwright?
-
-This service uses Playwright instead of Puppeteer for several key advantages:
-
-- **Cross-Platform Support** - Works reliably on both AMD64 and ARM64 architectures
-- **Container-Optimized** - Designed specifically for containerized environments
-- **Simplified Dependencies** - Automatic browser installation with system dependencies
-- **Better Error Handling** - More robust browser process management
-- **Production Ready** - Extensively tested in cloud deployment scenarios
 
 ## Performance
 
@@ -208,10 +194,30 @@ This service uses Playwright instead of Puppeteer for several key advantages:
 
 The service includes intelligent cache pre-warming on startup:
 
-- **Dynamic Popular Content**: Automatically fetches popular posts from connected sites
+- **Dynamic Popular Content**: Fetches popular posts from APIs (currently supports endpoints returning `{daily: [], monthly: [], yearly: []}` format with `title` field)
 - **RAM Cache Promotion**: Pre-loads most-viewed content from disk to RAM
 - **Zero Maintenance**: No hardcoded lists to maintain - adapts based on real traffic data
 - **Faster Social Sharing**: Popular content serves instantly to OG crawlers
+
+**Note**: Pre-warming is currently hardcoded to fetch from `https://scottspence.com/api/fetch-popular-posts`. To use with your own site:
+
+1. **Option 1**: Create a compatible API endpoint that returns:
+
+   ```json
+   {
+     "daily": [{"title": "Post Title"}, ...],
+     "monthly": [{"title": "Post Title"}, ...],
+     "yearly": [{"title": "Post Title"}, ...]
+   }
+   ```
+
+2. **Option 2**: Modify the `pre_warm_cache()` function in `src/server.ts` to:
+
+   - Change the fetch URL to your analytics endpoint
+   - Adapt the data parsing logic for your API format
+   - Update the image parameter mapping
+
+3. **Option 3**: Remove pre-warming entirely by commenting out the `pre_warm_cache()` call
 
 ### Cache Flow
 
@@ -230,6 +236,16 @@ All responses include debug headers:
   - `HIT-DISK` - Served from disk cache
   - `MISS` - Generated new image
 - `Content-Length` - Image size for faster crawler processing
+
+### Why Playwright?
+
+This service uses Playwright instead of Puppeteer for several key advantages:
+
+- **Cross-Platform Support** - Works reliably on both AMD64 and ARM64 architectures
+- **Container-Optimized** - Designed specifically for containerized environments
+- **Simplified Dependencies** - Automatic browser installation with system dependencies
+- **Better Error Handling** - More robust browser process management
+- **Production Ready** - Extensively tested in cloud deployment scenarios
 
 ## Development
 
@@ -281,16 +297,19 @@ Production deployments include rate limiting:
 If OG image testing tools show broken images but social platforms work correctly:
 
 **Common Causes:**
+
 - **Initial Generation Delay**: First-time image generation takes 2-3 seconds
 - **Tester Timeouts**: Many OG testers have very short timeout periods (2-5 seconds)
 - **Cache Miss**: Image not pre-warmed or evicted from cache
 
 **Solutions:**
+
 1. **CDN Setup**: Configure Cloudflare Cache Rules (see CDN Optimization section)
 2. **Pre-warming**: Popular content is automatically pre-warmed on service restart
 3. **Manual Pre-warm**: Visit the OG URL directly to cache before sharing
 
 **Why Social Platforms Work Better:**
+
 - Longer timeout periods (10-30 seconds)
 - Better retry logic
 - More patient crawling behavior
@@ -309,6 +328,7 @@ docker logs your-container-name | grep "Cache hit\|Generated fresh"
 ```
 
 Response time guidelines:
+
 - **RAM hits**: < 50ms (excellent)
 - **Disk hits**: 50-200ms (good)
 - **Fresh generation**: 2000-4000ms (normal for first request)
