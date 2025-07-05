@@ -389,8 +389,17 @@ app.get("/health", (c: Context) => {
 	});
 });
 
+// Auth middleware for cache management
+const require_auth = async (c: Context, next: Function) => {
+	const token = c.req.header('Authorization');
+	if (!token || token !== `Bearer ${process.env.ADMIN_TOKEN}`) {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+	return await next();
+};
+
 // Cache management endpoints
-app.delete("/cache", async (c: Context) => {
+app.delete("/cache", require_auth, async (c: Context) => {
 	const ram_cleared = ram_cache.size;
 	ram_cache.clear();
 
@@ -412,7 +421,7 @@ app.delete("/cache", async (c: Context) => {
 	});
 });
 
-app.delete("/cache/:key", async (c: Context) => {
+app.delete("/cache/:key", require_auth, async (c: Context) => {
 	const key = c.req.param("key");
 	const decoded_key = decodeURIComponent(key);
 

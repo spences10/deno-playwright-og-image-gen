@@ -34,6 +34,9 @@ RATE_LIMIT_MAX_REQUESTS=60
 DEFAULT_CACHE_TTL=86400          # 24 hours (both RAM and disk cache)
 HTTP_CACHE_TTL=86400             # 24 hours (browser/CDN cache)
 IMAGE_CACHE_MAX_SIZE=100         # Maximum images in RAM cache (disk unlimited)
+
+# Cache Management Authentication
+ADMIN_TOKEN=your-secret-token-here
 ```
 
 ### Installation
@@ -102,26 +105,55 @@ Returns both RAM and disk cache statistics and keys.
 
 ```
 DELETE /cache
+Authorization: Bearer your-admin-token
 ```
 
-Clears both RAM and disk caches.
+Clears both RAM and disk caches. Requires authentication.
 
 **Delete specific image:**
 
 ```
 DELETE /cache/{cache-key}
+Authorization: Bearer your-admin-token
 ```
 
-Removes image from both RAM and disk caches.
+Removes image from both RAM and disk caches. Requires authentication.
 
 ## Deployment on Coolify
 
 1. **Connect Repository** - Add your Git repository to Coolify
 2. **Set Environment Variables** - Configure the environment variables listed above
-3. **Deploy** - Coolify will automatically:
+3. **Configure Persistent Storage** (Optional) - To persist cache across deployments:
+   - Add Volume Mount in Coolify storage settings
+   - Source Path: `/data/coolify/applications/YOUR_APP_ID/cache`
+   - Destination Path: `/app/cache`
+4. **Deploy** - Coolify will automatically:
    - Use the official Playwright Docker image (browsers pre-installed)
    - Install dependencies with pnpm
    - Build and deploy your service
+
+### Cache Configuration for Different Site Sizes
+
+For small sites (500 pages or less):
+```bash
+DEFAULT_CACHE_TTL=31536000       # 1 year (nearly permanent)
+HTTP_CACHE_TTL=31536000          # 1 year for browsers/CDNs
+IMAGE_CACHE_MAX_SIZE=500         # Match your page count
+```
+
+For medium sites (500-5000 pages):
+```bash
+DEFAULT_CACHE_TTL=2592000        # 30 days
+HTTP_CACHE_TTL=2592000           # 30 days for browsers/CDNs
+IMAGE_CACHE_MAX_SIZE=1000        # Adjust based on memory
+```
+
+For large sites (5000+ pages):
+```bash
+DEFAULT_CACHE_TTL=86400          # 24 hours (default)
+HTTP_CACHE_TTL=86400             # 24 hours for browsers/CDNs
+IMAGE_CACHE_MAX_SIZE=100         # Keep RAM usage low
+```
 
 The project uses a custom Dockerfile with the official Microsoft Playwright image (`mcr.microsoft.com/playwright:v1.53.1-noble`) for maximum reliability and performance.
 
